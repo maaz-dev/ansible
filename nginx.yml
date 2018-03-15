@@ -1,0 +1,20 @@
+---
+- hosts: load
+  become: true
+  handlers:
+    - name: restart nginx
+      service: name=nginx state=restarted
+  tasks:
+    - name: Install NGINX
+      yum: name=nginx state=present
+    - name: start the service
+      service: name=nginx state=started enabled=yes
+    - name: Copy the config file
+      copy:
+        src: files/loadbalancer.conf 
+        dest: /etc/nginx/conf.d/loadbalancer.conf
+      notify: restart nginx
+    
+    - name: delete the default config
+      file: path=/usr/share/nginx/html/index.html state=absent 
+      notify: restart nginx  

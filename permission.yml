@@ -1,0 +1,10 @@
+---
+- hosts: web
+  become: true
+  tasks:
+    - name: Ensure storage is 777
+      file:
+        path: /var/www/html/blog/storage
+        state: directory
+        recurse: yes
+        mode: 0777 

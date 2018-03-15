@@ -1,0 +1,67 @@
+---
+- hosts: web
+  become: yes
+  handlers:
+    - name: restart apache
+      service: name=httpd state=restarted
+  tasks:
+    - name: Install Apache
+      yum: 
+        name: httpd
+        state: present
+    - name: Ensure Apche is up and running
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+    - name: Install the EPEL repository 
+      yum: 
+        name: epel-release
+        state: present
+    - name: Install PHP 7 and the require packages for Laravel
+      yum: name="{{ item }}"  state=present
+      with_items:
+        - mod_php71w
+        - php71w-cli 
+        - php71w-common 
+        - php71w-gd
+        - php71w-mbstring
+        - php71w-mcrypt
+        - php71w-mysql
+        - php71w-xml
+      notify: restart apache
+    - name: Upload a test.php to web root
+      copy:
+        src: files/test.php
+        dest: /var/www/html/
+    - name: install composer
+      shell: curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+      args:
+        creates: /usr/local/bin/composer
+    - name: Ensure the blog directory is empty
+      file:
+        path: /var/www/html/blog
+        state: absent
+# composer is not an idempotent and above task is the work around to enmpty the project file.
+    - name: Install Laravel 5.5
+      composer:
+        command: create-project
+        arguments: laravel/laravel blog
+        working_dir: /var/www/html
+        prefer-dist: yes
+    - name: Ensure storage is 777 
+      file:
+        path: /var/www/html/blog/storage
+        state: directory
+        recurse: yes
+        mode: 0777
+    - name: Change the default web root of the Apcached server
+      lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: 'DocumentRoot /var/www/html'
+        line: DocumentRoot /var/www/html/blog/public/
+      notify: restart apache
+    - name: Install mysql-client
+      yum: name=mysql-community-client state=present
+
+        
